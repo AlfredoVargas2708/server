@@ -5,7 +5,16 @@ import api from "./routes/index.js";
 const PORT = process.env.PORT || 3000;
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "https://app-blond-xi-77.vercel.app/home",
+      "http://localhost:5173/home",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 app.use("/api", api);
