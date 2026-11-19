@@ -8,8 +8,8 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "https://app-blond-xi-77.vercel.app/home",
-      "http://localhost:5173/home",
+      "https://app-blond-xi-77.vercel.app",
+      "http://localhost:5173",
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
