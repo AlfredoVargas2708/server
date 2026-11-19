@@ -26,12 +26,12 @@ export const MinifigsController = {
       `${URL}/minifigs/${normalizeSet(set_num)}`,
       {
         headers: {
-          Authorization: `key ${KeyboardEvent}`,
+          Authorization: `key ${KEY}`,
         },
       },
     );
 
-    return data;
+    return { ...data, num_pieces: data.num_parts };
   },
 
   async getMinifigParts(set_num, page, page_size) {
@@ -77,5 +77,22 @@ export const MinifigsController = {
         };
       }),
     };
+  },
+
+  async getMinifigSets(minifig_set_num, page, page_size) {
+    const pageNumber = Math.max(parseInt(page, 10) || 1, 1);
+    const pageSize = Math.max(parseInt(page_size, 10) || 1000, 1);
+
+    const { data: setData } = await axios.get(
+      `${URL}/minifigs/${normalizeSet(minifig_set_num)}/sets`,
+      {
+        params: { page: pageNumber, page_size: pageSize },
+        headers: {
+          Authorization: `key ${KEY}`,
+        },
+      },
+    );
+
+    return setData;
   },
 };
