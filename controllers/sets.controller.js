@@ -173,7 +173,7 @@ export const SetsController = {
     };
   },
 
-  async getSetParts(set_num, page, page_size, color_id, part_cat_id) {
+  async getSetParts(set_num, page, page_size, color_id, part_cat_id, element_id) {
     const normalizedSet = normalizeSet(set_num);
     const pageNumber = Math.max(parseInt(page, 10) || 1, 1);
     const pageSize = Math.max(parseInt(page_size, 10) || 100, 1);
@@ -182,9 +182,10 @@ export const SetsController = {
     const hasColorFilter = !Number.isNaN(colorFilter);
     const partCatFilter = parseInt(part_cat_id, 10);
     const hasPartCatFilter = !Number.isNaN(partCatFilter);
+    const hasElementIdFilter = element_id !== null && element_id !== undefined;
 
     // Si se especifica color_id, obtener todas las partes y filtrar
-    if (hasColorFilter || hasPartCatFilter) {
+    if (hasColorFilter || hasPartCatFilter || hasElementIdFilter) {
       let allResults = [];
       let currentPage = 1;
       let hasMore = true;
@@ -226,11 +227,14 @@ export const SetsController = {
         }
       }
 
+      console.log(allResults[0])
+
       // Filtrar por color_id && part_cat_id
       const filteredParts = allResults.filter(
         (part) =>
           (!hasColorFilter || part.color.id === colorFilter) &&
-          (!hasPartCatFilter || part.part.part_cat_id === partCatFilter),
+          (!hasPartCatFilter || part.part.part_cat_id === partCatFilter) &&
+          (!hasElementIdFilter || (part.element_id && part.element_id.includes(element_id))),
       );
 
       if (filteredParts.length === 0) {

@@ -27,6 +27,7 @@ setsRouter.get("/parts", async (req, res) => {
       page_size = 10,
       color_id,
       part_cat_id,
+      element_id
     } = req.query;
 
     if (!set_num)
@@ -38,6 +39,7 @@ setsRouter.get("/parts", async (req, res) => {
       page_size,
       color_id,
       part_cat_id,
+      element_id
     );
 
     return res.status(200).json(partsSet);
