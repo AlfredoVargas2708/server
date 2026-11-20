@@ -123,10 +123,18 @@ function filtrarInstruccionesLego(instructions) {
   // 3. Eliminar duplicados exactos o revisiones viejas del mismo libro/tomo
   const unicas = new Map();
 
+  const getTomo = (item) => {
+    const matches = [...item.description.matchAll(/(\d+)\/(\d+)/g)];
+    const last = matches.at(-1);
+    return last
+      ? { actual: parseInt(last[1], 10), total: parseInt(last[2], 10) }
+      : null;
+  };
+
   validas.forEach((item) => {
     // Detecta si el manual está dividido en tomos (ej. "1/3", "2/3")
-    const matchTomo = item.description.match(/(\d+\/\d+)/);
-    const claveTomo = matchTomo ? `tomo_${matchTomo[1]}` : "tomo_unico";
+    const tomo = getTomo(item);
+    const claveTomo = tomo ? `tomo_${tomo.actual}/${tomo.total}` : "tomo_unico";
 
     // Si ya guardamos ese tomo, lo reemplazamos solo si el nuevo tiene un ID de PDF mayor (revisión más nueva)
     if (!unicas.has(claveTomo)) {
@@ -144,8 +152,8 @@ function filtrarInstruccionesLego(instructions) {
   });
 
   // 4. Ordenar los tomos en secuencia (1/3, 2/3, 3/3) si aplica
-  return Array.from(unicas.values()).sort((a, b) =>
-    a.description.localeCompare(b.description, undefined, { numeric: true }),
+  return Array.from(unicas.values()).sort(
+    (a, b) => (getTomo(a)?.actual ?? 0) - (getTomo(b)?.actual ?? 0),
   );
 }
 
@@ -173,7 +181,14 @@ export const SetsController = {
     };
   },
 
-  async getSetParts(set_num, page, page_size, color_id, part_cat_id, element_id) {
+  async getSetParts(
+    set_num,
+    page,
+    page_size,
+    color_id,
+    part_cat_id,
+    element_id,
+  ) {
     const normalizedSet = normalizeSet(set_num);
     const pageNumber = Math.max(parseInt(page, 10) || 1, 1);
     const pageSize = Math.max(parseInt(page_size, 10) || 100, 1);
@@ -227,14 +242,13 @@ export const SetsController = {
         }
       }
 
-      console.log(allResults[0])
-
       // Filtrar por color_id && part_cat_id
       const filteredParts = allResults.filter(
         (part) =>
           (!hasColorFilter || part.color.id === colorFilter) &&
           (!hasPartCatFilter || part.part.part_cat_id === partCatFilter) &&
-          (!hasElementIdFilter || (part.element_id && part.element_id.includes(element_id))),
+          (!hasElementIdFilter ||
+            (part.element_id && part.element_id.includes(element_id))),
       );
 
       if (filteredParts.length === 0) {
@@ -329,6 +343,60 @@ export const SetsController = {
         };
       }),
     };
+  },
+
+  async getSetPartQuantity(set_num, element_id) {
+    const normalizedSet = normalizeSet(set_num);
+    let allResults = [];
+    let currentPage = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      try {
+        const { data: partsData } = await axios.get(
+          `${URL}/sets/${normalizedSet}/parts`,
+          {
+            params: { page: currentPage, page_size: 1000 },
+            headers: {
+              Authorization: `key ${KEY}`,
+            },
+          },
+        );
+
+        if (partsData.results && partsData.results.length > 0) {
+          allResults.push(...partsData.results);
+          currentPage++;
+
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          hasMore = !!partsData.next;
+        } else {
+          hasMore = false;
+        }
+      } catch (error) {
+        if (error.response?.status === 429) {
+          const retryAfter = error.response.headers["retry-after"] || 2;
+          console.warn(
+            `Rate limited (429). Esperando ${retryAfter} segundos...`,
+          );
+          await new Promise((resolve) =>
+            setTimeout(resolve, retryAfter * 1000),
+          );
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    const result = allResults.find(
+      (result) => result.element_id === String(element_id),
+    );
+
+    if (!result) {
+      return { quantityElement: 0 };
+    }
+
+    return { quantityElement: result.quantity };
   },
 
   async getSetColors(set_num) {

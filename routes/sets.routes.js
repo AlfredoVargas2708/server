@@ -27,7 +27,7 @@ setsRouter.get("/parts", async (req, res) => {
       page_size = 10,
       color_id,
       part_cat_id,
-      element_id
+      element_id,
     } = req.query;
 
     if (!set_num)
@@ -39,7 +39,7 @@ setsRouter.get("/parts", async (req, res) => {
       page_size,
       color_id,
       part_cat_id,
-      element_id
+      element_id,
     );
 
     return res.status(200).json(partsSet);
@@ -82,6 +82,24 @@ setsRouter.get("/minifigs", async (req, res) => {
   } catch (error) {
     console.error("Error al obtener las minifiguras del set:", error);
     return res.status(500).json({ error: "Error Interno Del Servidor" });
+  }
+});
+
+setsRouter.get("/quantity-part", async (req, res) => {
+  try {
+    const { set_num, element_id } = req.query;
+
+    if (!set_num || !element_id)
+      return res
+        .status(400)
+        .json({ error: "Faltan los campos de set_num y/o element_id" });
+
+    const quantity = await SetsController.getSetPartQuantity(set_num, element_id);
+
+    return res.status(200).json(quantity);
+  } catch (error) {
+    console.error("Error al obtener la cantidad de la pieza en el set:", error);
+    return res.status(500).json({ error: "Error Interno Servidor" });
   }
 });
 
