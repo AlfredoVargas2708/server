@@ -6,6 +6,7 @@ import partsRouter from "./parts.routes.js";
 import setsRouter from "./sets.routes.js";
 import themesRouter from "./themes.routes.js";
 import minifigsRouter from "./minifigs.routes.js";
+import databaseRouter from "./database.routes.js";
 
 const api = Router();
 
@@ -16,5 +17,6 @@ api.use("/parts", partsRouter);
 api.use("/sets", setsRouter);
 api.use("/themes", themesRouter);
 api.use("/minifigs", minifigsRouter);
+api.use("/database", databaseRouter);
 
 export default api;
