@@ -354,7 +354,7 @@ export const SetsController = {
     while (hasMore) {
       try {
         const { data: partsData } = await axios.get(
-          `${URL}/sets/${normalizedSet}/parts`,
+          `${URL}/sets/${normalizedSet}/parts?inc_minifig_parts=1`,
           {
             params: { page: currentPage, page_size: 1000 },
             headers: {
