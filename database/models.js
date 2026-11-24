@@ -21,7 +21,7 @@ const Theme = sequelize.define(
 const Color = sequelize.define(
   "Color",
   {
-    color_id: { type: DataTypes.INTEGER, primaryKey: true },
+    color_id: { type: DataTypes.NUMBER, primaryKey: true },
     color_name: { type: DataTypes.STRING(100), allowNull: false },
     color_rgb: { type: DataTypes.CHAR(6), allowNull: false }, // sin '#'
   },

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { PartCategoriesController } from "./part_categories.controller.js";
 import { getPropByString } from "../utils/getNestesValue.js";
+import { SetsController } from "./sets.controller.js";
 
 const URL = process.env.REBRICKABLE_API_URL || "";
 const KEY = process.env.REBRICKABLE_API_KEY || "";
@@ -93,6 +94,42 @@ export const MinifigsController = {
       },
     );
 
-    return setData;
+    const results = await this._getThemeSet(setData.results);
+
+    return {
+      count: setData.count,
+      results,
+    };
+  },
+
+  async _getThemeSet(setResults) {
+    const setNumber = [...new Set(setResults.map((set) => set.set_num))];
+
+    const setMap = new Map();
+
+    const results = await Promise.all(
+      setNumber.map((id) =>
+        SetsController.getSet(id)
+          .then((setData) => ({ id, data: setData, error: null }))
+          .catch((error) => ({ id, data: null, error })),
+      ),
+    );
+
+    results.forEach(({ id, data }) => {
+      if (data) {
+        setMap.set(id, data);
+      }
+    });
+
+    // Mapear campos usando fieldsToSend y agregar color_rgb
+    return setResults.map((result) => {
+      const setData = setMap.get(result.set_num);
+
+      return {
+        ...result,
+        theme_id: setData.theme_id,
+        theme_name: setData.theme_name,
+      };
+    });
   },
 };

@@ -28,4 +28,34 @@ databaseRouter.post("/create", async (req, res) => {
   }
 });
 
+databaseRouter.get("/", async (req, res) => {
+  try {
+    const {
+      sortOrder = "ASC",
+      sortField = "operation_id",
+      page = 1,
+      rows = 5,
+    } = req.query;
+
+    const validOrder = ["ASC", "DESC"].includes(sortOrder.toUpperCase())
+      ? sortOrder.toUpperCase()
+      : "ASC";
+
+    const filters = req.query.filter ? JSON.parse(req.query.filter) : {};
+
+    const operations = await DatabaseController.getOperations(
+      sortField,
+      validOrder,
+      Number(page),
+      Number(rows),
+      filters,
+    );
+
+    return res.status(200).json(operations);
+  } catch (error) {
+    console.error("Error al obtener las operaciones:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
 export default databaseRouter;
