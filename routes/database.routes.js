@@ -41,13 +41,25 @@ databaseRouter.get("/", async (req, res) => {
       ? sortOrder.toUpperCase()
       : "ASC";
 
-    const filters = req.query.filter ? JSON.parse(req.query.filter) : {};
+    // Parsear y validar filtros
+    let filters = {};
+    if (req.query.filter) {
+      try {
+        filters = JSON.parse(req.query.filter);
+        // Asegurar que filters es un objeto válido
+        if (typeof filters !== "object" || filters === null || Array.isArray(filters)) {
+          filters = {};
+        }
+      } catch (parseError) {
+        filters = {};
+      }
+    }
 
     const operations = await DatabaseController.getOperations(
       sortField,
       validOrder,
-      Number(page),
-      Number(rows),
+      Math.max(1, Number(page) || 1),
+      Math.max(1, Number(rows) || 5),
       filters,
     );
 

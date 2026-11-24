@@ -140,18 +140,17 @@ export const DatabaseController = {
       ],
     };
 
-    // Campos que NO son strings (para hacer búsqueda exacta en vez de LIKE)
-    // Solo los campos INTEGER, SMALLINT y BOOLEAN de tus modelos
-    const rangeFields = new Set(["num_parts", "cantidad"]);
+    // Campos que soportan filtro por rango
+    const rangeFields = new Set(["num_parts", "cantidad", "year"]);
 
+    // Campos que buscan coincidencia exacta (números)
     const exactMatchFields = new Set([
       "operation_id",
       "task",
-      "cantidad",
       "year",
-      "num_parts",
     ]);
 
+    // Campos booleanos
     const booleanFields = new Set(["pedido", "completo"]);
 
     // 2. Validar ordenamiento
@@ -163,56 +162,92 @@ export const DatabaseController = {
     const whereClause = {};
 
     for (const [filterKey, filterValue] of Object.entries(filters)) {
-      if (
-        !columnPathMap[filterKey] ||
-        filterValue === "" ||
-        filterValue == null
-      ) {
+      // Saltar si no existe el campo o el valor está vacío
+      if (!columnPathMap[filterKey] || filterValue === "" || filterValue == null) {
         continue;
       }
 
       const pathArray = columnPathMap[filterKey];
-      const sequelizeKey =
-        pathArray.length === 1
-          ? pathArray[0]
-          : `$${pathArray
-              .map((item) =>
-                typeof item === "string" ? item : item.model.name,
-              )
-              .join(".")}$`;
-
-      // ✅ CASO 1: Filtro por rango { min, max }
-      if (
-        rangeFields.has(filterKey) &&
-        typeof filterValue === "object" &&
-        !Array.isArray(filterValue)
-      ) {
-        const rangeCondition = {};
-
-        if (filterValue.min !== "" && filterValue.min != null) {
-          rangeCondition[Op.gte] = Number(filterValue.min);
-        }
-        if (filterValue.max !== "" && filterValue.max != null) {
-          rangeCondition[Op.lte] = Number(filterValue.max);
-        }
-
-        // Solo agregar al where si hay al menos un límite válido
-        if (Object.keys(rangeCondition).length > 0) {
-          whereClause[sequelizeKey] = rangeCondition;
-        }
+      
+      // Construir la clave de Sequelize para campos anidados
+      let sequelizeKey;
+      if (pathArray.length === 1) {
+        // Campo directo en Operation
+        sequelizeKey = pathArray[0];
+      } else {
+        // Campo en tabla relacionada - construir ruta con $ al inicio y final
+        const path = pathArray
+          .map((item) =>
+            typeof item === "string" ? item : item.model.name,
+          )
+          .join(".");
+        sequelizeKey = `$${path}`;
       }
-      // ✅ CASO 2: Booleanos
-      else if (booleanFields.has(filterKey)) {
-        whereClause[sequelizeKey] =
-          filterValue === true || filterValue === "true";
-      }
-      // ✅ CASO 3: Numéricos exactos (si envían un número directo en vez de rango)
-      else if (exactMatchFields.has(filterKey)) {
-        whereClause[sequelizeKey] = Number(filterValue);
-      }
-      // ✅ CASO 4: Texto (búsqueda parcial)
-      else {
-        whereClause[sequelizeKey] = { [Op.iLike]: `%${filterValue}%` };
+
+      try {
+        // ✅ CASO 1: Filtro por rango { min, max }
+        if (
+          rangeFields.has(filterKey) &&
+          typeof filterValue === "object" &&
+          !Array.isArray(filterValue)
+        ) {
+          const rangeCondition = {};
+          let hasCondition = false;
+
+          // Validar min
+          if (filterValue.min !== "" && filterValue.min != null) {
+            const minNum = Number(filterValue.min);
+            if (!isNaN(minNum)) {
+              rangeCondition[Op.gte] = minNum;
+              hasCondition = true;
+            }
+          }
+
+          // Validar max
+          if (filterValue.max !== "" && filterValue.max != null) {
+            const maxNum = Number(filterValue.max);
+            if (!isNaN(maxNum)) {
+              rangeCondition[Op.lte] = maxNum;
+              hasCondition = true;
+            }
+          }
+
+          // Solo agregar al where si hay al menos un límite válido
+          if (hasCondition) {
+            // sequelizeKey ya tiene todo lo necesario
+            const finalKey = sequelizeKey.startsWith("$") 
+              ? `${sequelizeKey}$`
+              : sequelizeKey;
+            whereClause[finalKey] = rangeCondition;
+          }
+        }
+        // ✅ CASO 2: Booleanos
+        else if (booleanFields.has(filterKey)) {
+          const finalKey = sequelizeKey.startsWith("$") 
+            ? `${sequelizeKey}$`
+            : sequelizeKey;
+          whereClause[finalKey] = filterValue === true || filterValue === "true";
+        }
+        // ✅ CASO 3: Numéricos exactos (si envían un número directo)
+        else if (exactMatchFields.has(filterKey)) {
+          const numValue = Number(filterValue);
+          if (!isNaN(numValue)) {
+            const finalKey = sequelizeKey.startsWith("$") 
+              ? `${sequelizeKey}$`
+              : sequelizeKey;
+            whereClause[finalKey] = numValue;
+          }
+        }
+        // ✅ CASO 4: Texto (búsqueda parcial)
+        else {
+          const finalKey = sequelizeKey.startsWith("$") 
+            ? `${sequelizeKey}$`
+            : sequelizeKey;
+          whereClause[finalKey] = { [Op.iLike]: `%${filterValue}%` };
+        }
+      } catch (error) {
+        console.warn(`Error procesando filtro ${filterKey}:`, error.message);
+        // Continuar sin este filtro si hay error
       }
     }
 
