@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { Op, where } from "sequelize";
 import {
   Color,
   Element,
@@ -58,27 +58,6 @@ async function ensure(Model, data, pk, transaction) {
   if (data[pk] === undefined || data[pk] === null) return;
   const { [pk]: id, ...defaults } = data;
   await Model.findOrCreate({ where: { [pk]: id }, defaults, transaction });
-}
-
-async function ensureElement(elementData, transaction) {
-  // Solo ignorar si es undefined o null, permitir 0 como valor válido
-  if (elementData.element_id === undefined || elementData.element_id === null)
-    return;
-
-  const { element_id, ...defaults } = elementData;
-
-  if (defaults.color_id !== undefined && defaults.color_id !== null) {
-    const colorExists = await Color.findByPk(defaults.color_id, {
-      transaction,
-    });
-    if (!colorExists) {
-      throw new Error(
-        `Color with ID ${defaults.color_id} does not exist. Cannot create element ${element_id}.`,
-      );
-    }
-  }
-
-  await Element.findOrCreate({ where: { element_id }, defaults, transaction });
 }
 
 export const DatabaseController = {
@@ -144,11 +123,7 @@ export const DatabaseController = {
     const rangeFields = new Set(["num_parts", "cantidad", "year"]);
 
     // Campos que buscan coincidencia exacta (números)
-    const exactMatchFields = new Set([
-      "operation_id",
-      "task",
-      "year",
-    ]);
+    const exactMatchFields = new Set(["operation_id", "task", "year"]);
 
     // Campos booleanos
     const booleanFields = new Set(["pedido", "completo"]);
@@ -163,12 +138,16 @@ export const DatabaseController = {
 
     for (const [filterKey, filterValue] of Object.entries(filters)) {
       // Saltar si no existe el campo o el valor está vacío
-      if (!columnPathMap[filterKey] || filterValue === "" || filterValue == null) {
+      if (
+        !columnPathMap[filterKey] ||
+        filterValue === "" ||
+        filterValue == null
+      ) {
         continue;
       }
 
       const pathArray = columnPathMap[filterKey];
-      
+
       // Construir la clave de Sequelize para campos anidados
       let sequelizeKey;
       if (pathArray.length === 1) {
@@ -177,9 +156,7 @@ export const DatabaseController = {
       } else {
         // Campo en tabla relacionada - construir ruta con $ al inicio y final
         const path = pathArray
-          .map((item) =>
-            typeof item === "string" ? item : item.model.name,
-          )
+          .map((item) => (typeof item === "string" ? item : item.model.name))
           .join(".");
         sequelizeKey = `$${path}`;
       }
@@ -215,7 +192,7 @@ export const DatabaseController = {
           // Solo agregar al where si hay al menos un límite válido
           if (hasCondition) {
             // sequelizeKey ya tiene todo lo necesario
-            const finalKey = sequelizeKey.startsWith("$") 
+            const finalKey = sequelizeKey.startsWith("$")
               ? `${sequelizeKey}$`
               : sequelizeKey;
             whereClause[finalKey] = rangeCondition;
@@ -223,16 +200,17 @@ export const DatabaseController = {
         }
         // ✅ CASO 2: Booleanos
         else if (booleanFields.has(filterKey)) {
-          const finalKey = sequelizeKey.startsWith("$") 
+          const finalKey = sequelizeKey.startsWith("$")
             ? `${sequelizeKey}$`
             : sequelizeKey;
-          whereClause[finalKey] = filterValue === true || filterValue === "true";
+          whereClause[finalKey] =
+            filterValue === true || filterValue === "true";
         }
         // ✅ CASO 3: Numéricos exactos (si envían un número directo)
         else if (exactMatchFields.has(filterKey)) {
           const numValue = Number(filterValue);
           if (!isNaN(numValue)) {
-            const finalKey = sequelizeKey.startsWith("$") 
+            const finalKey = sequelizeKey.startsWith("$")
               ? `${sequelizeKey}$`
               : sequelizeKey;
             whereClause[finalKey] = numValue;
@@ -240,7 +218,7 @@ export const DatabaseController = {
         }
         // ✅ CASO 4: Texto (búsqueda parcial)
         else {
-          const finalKey = sequelizeKey.startsWith("$") 
+          const finalKey = sequelizeKey.startsWith("$")
             ? `${sequelizeKey}$`
             : sequelizeKey;
           whereClause[finalKey] = { [Op.iLike]: `%${filterValue}%` };
@@ -285,5 +263,16 @@ export const DatabaseController = {
       count: result.count,
       rows: flat,
     };
+  },
+
+  async editStatusOperation(id, body) {
+    try {
+      await Operation.update(
+        { [body.field]: body.value },
+        { where: { operation_id: id } },
+      );
+    } catch (error) {
+      throw error;
+    }
   },
 };

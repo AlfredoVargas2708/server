@@ -47,7 +47,11 @@ databaseRouter.get("/", async (req, res) => {
       try {
         filters = JSON.parse(req.query.filter);
         // Asegurar que filters es un objeto válido
-        if (typeof filters !== "object" || filters === null || Array.isArray(filters)) {
+        if (
+          typeof filters !== "object" ||
+          filters === null ||
+          Array.isArray(filters)
+        ) {
           filters = {};
         }
       } catch (parseError) {
@@ -67,6 +71,18 @@ databaseRouter.get("/", async (req, res) => {
   } catch (error) {
     console.error("Error al obtener las operaciones:", error);
     return res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+databaseRouter.put("/status/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = req.body;
+
+    await DatabaseController.editStatusOperation(id, body);
+  } catch (error) {
+    console.error("Error al editar la operación:", error);
+    return res.status(500).json({ error: "Error Interno Del Servidor" });
   }
 });
 
