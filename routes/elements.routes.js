@@ -17,7 +17,25 @@ elementsRouter.get("/element", async (req, res) => {
     return res.status(200).json(element);
   } catch (error) {
     console.error("Error al obtener la información del elemento:", error);
-    return res.status(500).json({ error: "Error en GET elements/element" });
+    return res.status(500).json({ error: "Error Interno Del Servidor" });
+  }
+});
+
+elementsRouter.put("/create", async (req, res) => {
+  try {
+    const body = req.body;
+
+    if (!body)
+      return res
+        .status(400)
+        .json({ error: "Falta el elemento completo para crear fila" });
+
+    const element = await ElementsController.createElement(body);
+
+    return res.status(201).json(element);
+  } catch (error) {
+    console.error("Error al crear nuevo elemento:", error);
+    return res.status(500).json({ error: "Error Interno Del Servidor" });
   }
 });
 

@@ -2,6 +2,14 @@ import axios from "axios";
 import { getPropByString } from "../utils/getNestesValue.js";
 import { PartCategoriesController } from "./part_categories.controller.js";
 import CacheManager from "../utils/cacheManager.js";
+import {
+  Color,
+  Element,
+  Part,
+  PartCategory,
+  sequelize,
+} from "../database/models.js";
+import { ensure, splitBody } from "../utils/database.utils.js";
 
 const URL = process.env.REBRICKABLE_API_URL || "";
 const KEY = process.env.REBRICKABLE_API_KEY || "";
@@ -44,6 +52,17 @@ export const ElementsController = {
       data["part_cat_name"] = partCat.name;
 
       return data;
+    });
+  },
+
+  async createElement(newElement) {
+    const { element, color, part, partCat } = splitBody(newElement);
+
+    return sequelize.transaction(async (t) => {
+      await ensure(PartCategory, partCat, "part_cat_id", t);
+      await ensure(Part, part, "part_num", t);
+      await ensure(Color, color, "color_id", t);
+      await ensure(Element, element, "element_id", t);
     });
   },
 };

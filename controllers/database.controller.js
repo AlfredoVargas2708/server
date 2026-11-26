@@ -1,4 +1,4 @@
-import { Op, where } from "sequelize";
+import { Op } from "sequelize";
 import {
   Color,
   Element,
@@ -9,56 +9,23 @@ import {
   sequelize,
   Theme,
 } from "../database/models.js";
+import { ensure, splitBody } from "../utils/database.utils.js";
 
-const FIELDS = {
-  operation: [
-    "task",
-    "set_num",
-    "element_id",
-    "pedido",
-    "completo",
-    "cantidad",
-  ],
-  set: [
-    "set_num",
-    "name",
-    "year",
-    "theme_id",
-    "num_parts",
-    "set_img_url",
-    "set_url",
-    "last_modified_dt",
-  ],
-  element: [
-    "element_id",
-    "part_num",
-    "color_id",
-    "element_name",
-    "element_img_url",
-  ],
-  theme: ["theme_id", "theme_name"],
-  color: ["color_id", "color_name", "color_rgb"],
-  part: ["part_num", "part_cat_id", "part_url"],
-  partCat: ["part_cat_id", "part_cat_name"],
+const REPLACE_FIELDS = {
+  set_num: LegoSet,
+  element_id: Element,
 };
 
-// Toma solo las claves que realmente vienen en el body
-const pick = (source, keys) =>
-  Object.fromEntries(
-    keys.filter((k) => source[k] !== undefined).map((k) => [k, source[k]]),
-  );
+// Campos propios de la operación: se edita la fila
+const UPDATE_FIELDS = ["task", "cantidad", "pedido", "completo"];
 
-const splitBody = (body) =>
-  Object.fromEntries(
-    Object.entries(FIELDS).map(([entity, keys]) => [entity, pick(body, keys)]),
-  );
-
-async function ensure(Model, data, pk, transaction) {
-  // Solo ignorar si es undefined o null, permitir 0 como valor válido
-  if (data[pk] === undefined || data[pk] === null) return;
-  const { [pk]: id, ...defaults } = data;
-  await Model.findOrCreate({ where: { [pk]: id }, defaults, transaction });
-}
+const INCLUDE = [
+  { model: LegoSet, include: [Theme] },
+  {
+    model: Element,
+    include: [Color, { model: Part, include: [PartCategory] }],
+  },
+];
 
 export const DatabaseController = {
   async createOperacion(body) {
@@ -274,5 +241,55 @@ export const DatabaseController = {
     } catch (error) {
       throw error;
     }
+  },
+
+  async editOperation(id, field, value) {
+    return sequelize.transaction(async (t) => {
+      const op = await Operation.findByPk(id, { transaction: t });
+      if (!op) throw new Error(`Operación ${id} no existe`);
+
+      // 1. Edición simple: solo cambia el valor en la fila
+      if (UPDATE_FIELDS.includes(field)) {
+        await op.update({ [field]: value }, { transaction: t });
+        return op.reload({ include: INCLUDE, transaction: t });
+      }
+
+      // 2. Reemplazo: set_num o element_id
+      const Model = REPLACE_FIELDS[field];
+      if (Model) {
+        const exists = await Model.findByPk(value, { transaction: t });
+        if (!exists) throw new Error(`${field} "${value}" no existe`);
+
+        const {
+          task,
+          set_num,
+          element_id,
+          pedido,
+          completo,
+          cantidad,
+          created_at,
+        } = op;
+
+        await op.destroy({ transaction: t });
+
+        const created = await Operation.create(
+          {
+            task,
+            set_num,
+            element_id,
+            pedido,
+            completo,
+            cantidad,
+            created_at,
+            [field]: value, // pisa solo el campo que cambió
+          },
+          { transaction: t },
+        );
+
+        return created.reload({ include: INCLUDE, transaction: t });
+      }
+
+      throw new Error(`El campo "${field}" no es editable`);
+    });
   },
 };

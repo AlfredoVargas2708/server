@@ -86,4 +86,23 @@ databaseRouter.put("/status/:id", async (req, res) => {
   }
 });
 
+databaseRouter.put("/edit-operation/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { field, value } = req.body;
+
+    if (!field || !value)
+      return res
+        .status(400)
+        .json({ error: "Faltan los campos de field y/o value" });
+
+    await DatabaseController.editOperation(id, field, value);
+
+    return res.status(201).json({ message: "Operación editada correctamente" });
+  } catch (error) {
+    console.error("Error al editar la operación:", error);
+    return res.status(500).json({ error: "Error Interno Del Servidor" });
+  }
+});
+
 export default databaseRouter;
