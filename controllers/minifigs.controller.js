@@ -1,6 +1,6 @@
 import axios from "axios";
 import { PartCategoriesController } from "./part_categories.controller.js";
-import { getPropByString, normalizeSet } from "../utils/getNestesValue.js";
+import { getPropByString, normalizeMinifigSet, normalizeSet } from "../utils/getNestesValue.js";
 import { SetsController } from "./sets.controller.js";
 
 const URL = process.env.REBRICKABLE_API_URL || "";
@@ -20,7 +20,7 @@ const fieldsToSend = [
 export const MinifigsController = {
   async getMinifig(set_num) {
     const { data } = await axios.get(
-      `${URL}/minifigs/${normalizeSet(set_num)}`,
+      `${URL}/minifigs/${normalizeMinifigSet(set_num)}`,
       {
         headers: {
           Authorization: `key ${KEY}`,
@@ -33,7 +33,7 @@ export const MinifigsController = {
 
   async getMinifigParts(set_num, page, page_size) {
     const { data: partsData } = await axios.get(
-      `${URL}/minifigs/${normalizeSet(set_num)}/parts`,
+      `${URL}/minifigs/${normalizeMinifigSet(set_num)}/parts`,
       {
         params: { page, page_size },
         headers: {
@@ -81,7 +81,7 @@ export const MinifigsController = {
     const pageSize = Math.max(parseInt(page_size, 10) || 1000, 1);
 
     const { data: setData } = await axios.get(
-      `${URL}/minifigs/${normalizeSet(minifig_set_num)}/sets`,
+      `${URL}/minifigs/${normalizeMinifigSet(minifig_set_num)}/sets`,
       {
         params: { page: pageNumber, page_size: pageSize },
         headers: {

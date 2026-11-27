@@ -20,3 +20,7 @@ export function getPropByString(obj, propString) {
 export const normalizeSet = (value) => {
   return value.includes("-1") ? value : `${value}-1`;
 };
+
+export const normalizeMinifigSet = (value) => {
+  return value.includes("fig-") ? value : `fig-${value}`;
+};
