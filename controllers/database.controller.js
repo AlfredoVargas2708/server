@@ -248,48 +248,27 @@ export const DatabaseController = {
       const op = await Operation.findByPk(id, { transaction: t });
       if (!op) throw new Error(`Operación ${id} no existe`);
 
-      // 1. Edición simple: solo cambia el valor en la fila
-      if (UPDATE_FIELDS.includes(field)) {
-        await op.update({ [field]: value }, { transaction: t });
-        return op.reload({ include: INCLUDE, transaction: t });
-      }
-
-      // 2. Reemplazo: set_num o element_id
       const Model = REPLACE_FIELDS[field];
+      const editable = UPDATE_FIELDS.includes(field) || Model;
+      if (!editable) throw new Error(`El campo "${field}" no es editable`);
+
       if (Model) {
         const exists = await Model.findByPk(value, { transaction: t });
         if (!exists) throw new Error(`${field} "${value}" no existe`);
-
-        const {
-          task,
-          set_num,
-          element_id,
-          pedido,
-          completo,
-          cantidad,
-          created_at,
-        } = op;
-
-        await op.destroy({ transaction: t });
-
-        const created = await Operation.create(
-          {
-            task,
-            set_num,
-            element_id,
-            pedido,
-            completo,
-            cantidad,
-            created_at,
-            [field]: value, // pisa solo el campo que cambió
-          },
-          { transaction: t },
-        );
-
-        return created.reload({ include: INCLUDE, transaction: t });
       }
 
-      throw new Error(`El campo "${field}" no es editable`);
+      await op.update({ [field]: value }, { transaction: t });
+      return op.reload({ include: INCLUDE, transaction: t });
     });
+  },
+
+  async deleteOperation(id) {
+    try {
+      await Operation.destroy({
+        where: { operation_id: id },
+      });
+    } catch (error) {
+      throw error;
+    }
   },
 };

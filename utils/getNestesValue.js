@@ -16,3 +16,7 @@ export function getPropByString(obj, propString) {
   }
   return obj[props[i]];
 }
+
+export const normalizeSet = (value) => {
+  return value.includes("-1") ? value : `${value}-1`;
+};

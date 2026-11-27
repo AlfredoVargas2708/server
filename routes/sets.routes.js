@@ -94,7 +94,10 @@ setsRouter.get("/quantity-part", async (req, res) => {
         .status(400)
         .json({ error: "Faltan los campos de set_num y/o element_id" });
 
-    const quantity = await SetsController.getSetPartQuantity(set_num, element_id);
+    const quantity = await SetsController.getSetPartQuantity(
+      set_num,
+      element_id,
+    );
 
     return res.status(200).json(quantity);
   } catch (error) {
@@ -121,6 +124,24 @@ setsRouter.get("/instructions", async (req, res) => {
     return res.status(200).json(instructions);
   } catch (error) {
     console.error("Error al obtener las intrsucciones:", error);
+    return res.status(500).json({ error: "Error Interno Del Servidor" });
+  }
+});
+
+setsRouter.put("/create", async (req, res) => {
+  try {
+    const body = req.body;
+
+    if (!body)
+      return res
+        .status(400)
+        .json({ error: "Falta el elemento completo para crear fila" });
+
+    const setData = await SetsController.createSet(body);
+
+    return res.status(201).json(setData);
+  } catch (error) {
+    console.error("Error al crear nuevo set:", error);
     return res.status(500).json({ error: "Error Interno Del Servidor" });
   }
 });

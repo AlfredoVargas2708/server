@@ -80,6 +80,8 @@ databaseRouter.put("/status/:id", async (req, res) => {
     const body = req.body;
 
     await DatabaseController.editStatusOperation(id, body);
+
+    return res.status(201).json({ message: "Operación editada correctamente" });
   } catch (error) {
     console.error("Error al editar la operación:", error);
     return res.status(500).json({ error: "Error Interno Del Servidor" });
@@ -101,6 +103,21 @@ databaseRouter.put("/edit-operation/:id", async (req, res) => {
     return res.status(201).json({ message: "Operación editada correctamente" });
   } catch (error) {
     console.error("Error al editar la operación:", error);
+    return res.status(500).json({ error: "Error Interno Del Servidor" });
+  }
+});
+
+databaseRouter.delete("/delete-operation/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await DatabaseController.deleteOperation(id);
+
+    return res
+      .status(201)
+      .json({ message: "Operación Eliminada Correctamente" });
+  } catch (error) {
+    console.error("Error al eliminar la operación:", error);
     return res.status(500).json({ error: "Error Interno Del Servidor" });
   }
 });

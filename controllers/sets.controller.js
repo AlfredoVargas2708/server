@@ -1,19 +1,17 @@
 import axios from "axios";
 import { ThemesController } from "./themes.controller.js";
 import { PartCategoriesController } from "./part_categories.controller.js";
-import { getPropByString } from "../utils/getNestesValue.js";
+import { getPropByString, normalizeSet } from "../utils/getNestesValue.js";
 import { MinifigsController } from "./minifigs.controller.js";
 import CacheManager from "../utils/cacheManager.js";
+import { LegoSet, sequelize, Theme } from "../database/models.js";
+import { ensure, splitBody } from "../utils/database.utils.js";
 
 const URL = process.env.REBRICKABLE_API_URL || "";
 const KEY = process.env.REBRICKABLE_API_KEY || "";
 
 const BRICK_URL = process.env.BRICKSET_API_URL || "";
 const BRICK_KEY = process.env.BRICKSET_API_KEY || "";
-
-const normalizeSet = (value) => {
-  return value.includes("-1") ? value : `${value}-1`;
-};
 
 const setsCache = new CacheManager(5 * 60 * 1000);
 // Caché de piezas de minifiguras (5 minutos)
@@ -176,6 +174,7 @@ export const SetsController = {
 
     return {
       ...setData,
+      set_num: normalizeSet(setData.set_num),
       theme_name: theme.name,
       num_pieces: setData.num_parts,
     };
@@ -464,5 +463,14 @@ export const SetsController = {
     );
 
     return filtrarInstruccionesLego(data.instructions);
+  },
+
+  async createSet(newSet) {
+    const { set, theme } = splitBody(newSet);
+
+    return sequelize.transaction(async (t) => {
+      await ensure(Theme, theme, "theme_id", t);
+      await ensure(LegoSet, set, "set_num", t);
+    });
   },
 };

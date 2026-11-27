@@ -2,6 +2,7 @@ import axios from "axios";
 import { ThemesController } from "./themes.controller.js";
 import { ColorsController } from "./colors.controller.js";
 import CacheManager from "../utils/cacheManager.js";
+import { normalizeSet } from "../utils/getNestesValue.js";
 
 const URL = process.env.REBRICKABLE_API_URL || "";
 const KEY = process.env.REBRICKABLE_API_KEY || "";
@@ -253,7 +254,10 @@ export const PartsController = {
         (set) =>
           (!hasThemeFilter || set.theme_id === themeFilter) &&
           (!hasSetFilter || set.set_num.toLowerCase().includes(setFilter)),
-      );
+      ).map((set) => ({
+        ...set,
+        set_num: normalizeSet(set.set_num)
+      }));
 
       if (foundSets.length === 0) {
         return {

@@ -1,14 +1,10 @@
 import axios from "axios";
 import { PartCategoriesController } from "./part_categories.controller.js";
-import { getPropByString } from "../utils/getNestesValue.js";
+import { getPropByString, normalizeSet } from "../utils/getNestesValue.js";
 import { SetsController } from "./sets.controller.js";
 
 const URL = process.env.REBRICKABLE_API_URL || "";
 const KEY = process.env.REBRICKABLE_API_KEY || "";
-
-const normalizeSet = (value) => {
-  return value.includes("fig-") ? value : `fig-${value}`;
-};
 
 const fieldsToSend = [
   { field: "element_id", objetcField: "element_id" },
@@ -127,6 +123,7 @@ export const MinifigsController = {
 
       return {
         ...result,
+        set_num: normalizeSet(setData.set_num),
         theme_id: setData.theme_id,
         theme_name: setData.theme_name,
       };
